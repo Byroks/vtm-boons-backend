@@ -1,0 +1,14 @@
+{
+	"name": "vtm-boons-backend",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "jest"
+	},
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"supertest": "^6.3.3"
+	}
+}
