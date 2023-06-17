@@ -9,6 +9,7 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
+		"connect-busboy": "^1.0.0",
 		"supertest": "^6.3.3"
 	}
 }
