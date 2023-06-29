@@ -37,7 +37,7 @@ app.use(busboy());
 
 app.use(
 	cors({
-		origin: "http://localhost:4200",
+		origin: "http://95.111.232.136:4200",
 	})
 );
 
