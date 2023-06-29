@@ -48,3 +48,10 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - name: Publish release
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          command: "docker-compose pull && docker-compose restart"
+          host: ${{ secrets.HOST }}
+          username: vtm-publish
+          password: ${{ secrets.PASSWORD }}
