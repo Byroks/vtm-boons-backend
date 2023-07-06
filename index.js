@@ -53,7 +53,7 @@ let boonsCSV = "";
 
 app.post("/api/file-upload", (req, res) => {
 	data = req.body;
-	distributeBoons(data.file?.connections, data.file?.elements, data?.weights, data?.weights?.amount);
+	distributeBoons(data.file?.connections, data.file?.elements, data.weights);
 	res.send({ json: data.file, csv: boonsCSV });
 	data = null;
 	boonsCSV = "";
