@@ -60,7 +60,7 @@ app.post("/api/file-upload", (req, res) => {
 });
 
 // https://kumu.io/RiggaTony/v5-relationship-map-template Template we are working off
-function distributeBoons(connections, characters, weights = undefined, amount = undefined) {
+function distributeBoons(connections, characters, weights = undefined) {
 	characters = characters.filter(
 		(x) =>
 			(x.attributes["element type"] === "Kindred" || x.attributes["element type"] === "Coterie") &&
@@ -69,12 +69,16 @@ function distributeBoons(connections, characters, weights = undefined, amount = 
 	charIds = characters.map((x) => x._id);
 	connections = connections.filter((x) => charIds.includes(x.from) && charIds.includes(x.to));
 
-	weights.minor += weights.trivial;
-	weights.moderate += weights.minor;
-	weights.major += weights.moderate;
-	weights.life += weights.major;
+	weights.boons.minor += weights.boons.trivial;
+	weights.boons.moderate += weights.boons.minor;
+	weights.boons.major += weights.boons.moderate;
+	weights.boons.life += weights.boons.major;
 
-	if (amount === undefined || amount === 0) {
+	if (weights.connections === undefined) {
+		weights.connections = connectionTypes;
+	}
+
+	if (weights.boons.amount === undefined || weights.boons.amount === 0) {
 		amount = characters.length * 1.3; //TODO: adjust factor for amount
 	}
 
@@ -89,16 +93,16 @@ function distributeBoons(connections, characters, weights = undefined, amount = 
 		con = connections.find((x) => creditor._id.includes(x.from) && debtor._id.includes(x.to));
 
 		if (con) {
-			if (!(getRandomInt(100) < 50 + connectionTypes[con.attributes["element type"]])) continue;
+			if (!(getRandomInt(100) < 50 + weights.connections[con.attributes["element type"]])) continue;
 
-			aquireBoonWeight(con, creditor, debtor, weights);
+			aquireBoonWeight(con, creditor, debtor, weights.boons);
 		} else {
 			if (!(getRandomInt(100) < 10)) continue;
 			con = connections.find((x) => debtor._id.includes(x.from) && creditor._id.includes(x.to));
 			if (con) {
-				aquireBoonWeight(con, creditor, debtor, weights);
+				aquireBoonWeight(con, creditor, debtor, weights.boons);
 			} else {
-				aquireBoonWeight(creatCon(connections, creditor._id, debtor._id), creditor, debtor, weights);
+				aquireBoonWeight(creatCon(connections, creditor._id, debtor._id), creditor, debtor, weights.boons);
 			}
 		}
 
@@ -163,7 +167,7 @@ function getRandomInt(max) {
 }
 
 app.listen(3000, () => {
-	console.log("Example app listening on port 3000!");
+	console.log("Boons by Night listening on port 3000!");
 });
 
 module.exports = app;
