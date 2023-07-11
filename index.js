@@ -6,7 +6,7 @@ var crypto = require("crypto");
 
 const app = express();
 
-const defaultWeights = {
+const defaultBoonWeights = {
 	trivial: 30,
 	minor: 40,
 	moderate: 20,
@@ -15,7 +15,7 @@ const defaultWeights = {
 	amount: 0,
 };
 
-var connectionTypes = {
+const defaultConnectionWeights = {
 	"Positive": 20,
 	"Friends": 20,
 	"Dating/Lovers": 20,
@@ -45,7 +45,15 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
 app.get("/api/default-weights", (req, res) => {
-	res.send(defaultWeights);
+	res.send({ boons: defaultBoonWeights, connections: defaultConnectionWeights });
+});
+
+app.get("/api/boon-weights", (req, res) => {
+	res.send(defaultBoonWeights);
+});
+
+app.get("/api/connection-weights", (req, res) => {
+	res.send(defaultConnectionWeights);
 });
 
 let data;
@@ -53,14 +61,14 @@ let boonsCSV = "";
 
 app.post("/api/file-upload", (req, res) => {
 	data = req.body;
-	distributeBoons(data.file?.connections, data.file?.elements, data?.weights, data?.weights?.amount);
+	distributeBoons(data.file?.connections, data.file?.elements, data.weights);
 	res.send({ json: data.file, csv: boonsCSV });
 	data = null;
 	boonsCSV = "";
 });
 
 // https://kumu.io/RiggaTony/v5-relationship-map-template Template we are working off
-function distributeBoons(connections, characters, weights = undefined, amount = undefined) {
+function distributeBoons(connections, characters, weights = undefined) {
 	characters = characters.filter(
 		(x) =>
 			(x.attributes["element type"] === "Kindred" || x.attributes["element type"] === "Coterie") &&
@@ -69,12 +77,16 @@ function distributeBoons(connections, characters, weights = undefined, amount = 
 	charIds = characters.map((x) => x._id);
 	connections = connections.filter((x) => charIds.includes(x.from) && charIds.includes(x.to));
 
-	weights.minor += weights.trivial;
-	weights.moderate += weights.minor;
-	weights.major += weights.moderate;
-	weights.life += weights.major;
+	weights.boons.minor += weights.boons.trivial;
+	weights.boons.moderate += weights.boons.minor;
+	weights.boons.major += weights.boons.moderate;
+	weights.boons.life += weights.boons.major;
 
-	if (amount === undefined || amount === 0) {
+	if (weights.connections === undefined) {
+		weights.connections = defaultConnectionWeights;
+	}
+
+	if (weights.boons.amount === undefined || weights.boons.amount === 0) {
 		amount = characters.length * 1.3; //TODO: adjust factor for amount
 	}
 
@@ -89,16 +101,16 @@ function distributeBoons(connections, characters, weights = undefined, amount = 
 		con = connections.find((x) => creditor._id.includes(x.from) && debtor._id.includes(x.to));
 
 		if (con) {
-			if (!(getRandomInt(100) < 50 + connectionTypes[con.attributes["element type"]])) continue;
+			if (!(getRandomInt(100) < 50 + weights.connections[con.attributes["element type"]])) continue;
 
-			aquireBoonWeight(con, creditor, debtor, weights);
+			aquireBoonWeight(con, creditor, debtor, weights.boons);
 		} else {
 			if (!(getRandomInt(100) < 10)) continue;
 			con = connections.find((x) => debtor._id.includes(x.from) && creditor._id.includes(x.to));
 			if (con) {
-				aquireBoonWeight(con, creditor, debtor, weights);
+				aquireBoonWeight(con, creditor, debtor, weights.boons);
 			} else {
-				aquireBoonWeight(creatCon(connections, creditor._id, debtor._id), creditor, debtor, weights);
+				aquireBoonWeight(creatCon(connections, creditor._id, debtor._id), creditor, debtor, weights.boons);
 			}
 		}
 
@@ -163,7 +175,7 @@ function getRandomInt(max) {
 }
 
 app.listen(3000, () => {
-	console.log("Example app listening on port 3000!");
+	console.log("Boons by Night listening on port 3000!");
 });
 
 module.exports = app;
