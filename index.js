@@ -44,6 +44,10 @@ app.use(
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
+app.get("/api/default-weights", (req, res) => {
+	res.send({ boons: defaultBoonWeights, connections: defaultConnectionWeights });
+});
+
 app.get("/api/boon-weights", (req, res) => {
 	res.send(defaultBoonWeights);
 });
