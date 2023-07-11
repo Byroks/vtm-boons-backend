@@ -6,7 +6,7 @@ var crypto = require("crypto");
 
 const app = express();
 
-const defaultWeights = {
+const defaultBoonWeights = {
 	trivial: 30,
 	minor: 40,
 	moderate: 20,
@@ -15,7 +15,7 @@ const defaultWeights = {
 	amount: 0,
 };
 
-var connectionTypes = {
+const defaultConnectionWeights = {
 	"Positive": 20,
 	"Friends": 20,
 	"Dating/Lovers": 20,
@@ -44,8 +44,12 @@ app.use(
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-app.get("/api/default-weights", (req, res) => {
-	res.send(defaultWeights);
+app.get("/api/boon-weights", (req, res) => {
+	res.send(defaultBoonWeights);
+});
+
+app.get("/api/connection-weights", (req, res) => {
+	res.send(defaultConnectionWeights);
 });
 
 let data;
@@ -75,7 +79,7 @@ function distributeBoons(connections, characters, weights = undefined) {
 	weights.boons.life += weights.boons.major;
 
 	if (weights.connections === undefined) {
-		weights.connections = connectionTypes;
+		weights.connections = defaultConnectionWeights;
 	}
 
 	if (weights.boons.amount === undefined || weights.boons.amount === 0) {
