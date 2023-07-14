@@ -51,7 +51,7 @@ jobs:
       - name: Publish release
         uses: garygrossgarten/github-action-ssh@release
         with:
-          command: "docker-compose pull && docker-compose restart"
+          command: "docker-compose down && docker-compose pull && docker-compose up"
           host: ${{ secrets.HOST }}
           username: vtm-publish
           password: ${{ secrets.PASSWORD }}
