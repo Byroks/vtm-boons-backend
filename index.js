@@ -56,26 +56,22 @@ app.get("/api/connection-weights", (req, res) => {
 	res.send(defaultConnectionWeights);
 });
 
-let data;
-let boonsCSV = "";
-
 app.post("/api/file-upload", (req, res) => {
-	data = req.body;
-	distributeBoons(data.file?.connections, data.file?.elements, data.weights);
-	res.send({ json: data.file, csv: boonsCSV });
-	data = null;
-	boonsCSV = "";
+	let data = req.body;
+	csv = distributeBoons(data.file, data.weights);
+	res.send({ json: data.file, csv: csv });
 });
 
 // https://kumu.io/RiggaTony/v5-relationship-map-template Template we are working off
-function distributeBoons(connections, characters, weights = undefined) {
-	characters = characters.filter(
+function distributeBoons(file, weights = undefined) {
+	let boonsCSV;
+	let characters = file.elements.filter(
 		(x) =>
 			(x.attributes["element type"] === "Kindred" || x.attributes["element type"] === "Coterie") &&
 			!(x.attributes.tags?.includes("Player") || x.attributes.tags?.includes("Player Character"))
 	);
 	charIds = characters.map((x) => x._id);
-	connections = connections.filter((x) => charIds.includes(x.from) && charIds.includes(x.to));
+	let connections = file.connections.filter((x) => charIds.includes(x.from) && charIds.includes(x.to));
 
 	weights.boons.minor += weights.boons.trivial;
 	weights.boons.moderate += weights.boons.minor;
@@ -103,22 +99,23 @@ function distributeBoons(connections, characters, weights = undefined) {
 		if (con) {
 			if (!(getRandomInt(100) < 50 + weights.connections[con.attributes["element type"]])) continue;
 
-			aquireBoonWeight(con, creditor, debtor, weights.boons);
+			boonsCSV += aquireBoonWeight(con, creditor, debtor, weights.boons);
 		} else {
 			if (!(getRandomInt(100) < 10)) continue;
 			con = connections.find((x) => debtor._id.includes(x.from) && creditor._id.includes(x.to));
 			if (con) {
-				aquireBoonWeight(con, creditor, debtor, weights.boons);
+				boonsCSV += aquireBoonWeight(con, creditor, debtor, weights.boons);
 			} else {
-				aquireBoonWeight(creatCon(connections, creditor._id, debtor._id), creditor, debtor, weights.boons);
+				boonsCSV += aquireBoonWeight(creatCon(file, connections, creditor._id, debtor._id), creditor, debtor, weights.boons);
 			}
 		}
 
 		amount--;
 	}
+	return boonsCSV;
 }
 
-function creatCon(connections, creditorId, debtorId) {
+function creatCon(file, connections, creditorId, debtorId) {
 	var newConId = crypto.randomBytes(4).toString("hex");
 	while (connections.find((x) => x._id === `conn-${newConId}`)) {
 		newConId = crypto.randomBytes(8).toString("hex");
@@ -136,7 +133,7 @@ function creatCon(connections, creditorId, debtorId) {
 		to: debtorId,
 	};
 
-	data.file.connections.push(con);
+	file.connections.push(con);
 
 	edge = {
 		_id: `edge-${newConId}`,
@@ -145,7 +142,7 @@ function creatCon(connections, creditorId, debtorId) {
 		connection: con._id,
 	};
 
-	data.file.maps[0].connections.push(edge); //figure something out if multiple maps exist
+	file.maps[0].connections.push(edge); //figure something out if multiple maps exist
 
 	return con;
 }
@@ -167,7 +164,7 @@ function aquireBoonWeight(con, creditor, debtor, weights) {
 
 	con.attributes.description += `\n${debtor.attributes.label} owes 1 ${weight} boon to ${creditor.attributes.label}.`;
 
-	boonsCSV += `${debtor.attributes.label} owes 1 ${weight} boon to ${creditor.attributes.label}.,\n`;
+	return `${debtor.attributes.label} owes 1 ${weight} boon to ${creditor.attributes.label}.,\n`;
 }
 
 function getRandomInt(max) {
