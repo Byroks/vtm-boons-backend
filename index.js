@@ -1,5 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const _ = require("lodash");
 const cors = require("cors");
 var busboy = require("connect-busboy");
 var crypto = require("crypto");
@@ -58,12 +59,12 @@ app.get("/api/connection-weights", (req, res) => {
 
 app.post("/api/file-upload", (req, res) => {
 	let data = req.body;
-	csv = distributeBoons(data.file, data.weights, data.newConnection);
+	csv = distributeBoons(data.file, data.weights);
 	res.send({ json: data.file, csv: csv });
 });
 
 // https://kumu.io/RiggaTony/v5-relationship-map-template Template we are working off
-function distributeBoons(file, weights = undefinedt, newConnection) {
+function distributeBoons(file, weights = undefined) {
 	let boonsCSV;
 	let characters = file.elements.filter(
 		(x) =>
@@ -73,6 +74,11 @@ function distributeBoons(file, weights = undefinedt, newConnection) {
 	charIds = characters.map((x) => x._id);
 	let connections = file.connections.filter((x) => charIds.includes(x.from) && charIds.includes(x.to));
 
+	createNewMap(file, charIds);
+
+	if (weights.boons === undefined) {
+		weights.boons = defaultBoonWeights;
+	}
 	weights.boons.minor += weights.boons.trivial;
 	weights.boons.moderate += weights.boons.minor;
 	weights.boons.major += weights.boons.moderate;
@@ -88,25 +94,24 @@ function distributeBoons(file, weights = undefinedt, newConnection) {
 
 	let creditor;
 	let debtor;
-	while (amount > 0) {
+	while (amount >= 1) {
 		creditor = characters[getRandomInt(characters.length)];
 		debtor = characters[getRandomInt(characters.length)];
 
 		if (creditor === debtor) continue;
 
 		con = connections.find((x) => creditor._id.includes(x.from) && debtor._id.includes(x.to));
-
 		if (con) {
-			if (!(getRandomInt(100) < 50 + weights.connections[con.attributes["element type"]])) continue;
+			if (!(getRandomInt(100) < 50 + weights.connections[con.attributes["connection type"]])) continue;
 
 			boonsCSV += aquireBoonWeight(con, creditor, debtor, weights.boons);
-		} else if (!newConnection) {
-			continue;
+			createEdge(file, crypto.randomBytes(4).toString("hex"), con._id);
 		} else {
 			if (!(getRandomInt(100) < 10)) continue;
 			con = connections.find((x) => debtor._id.includes(x.from) && creditor._id.includes(x.to));
 			if (con) {
 				boonsCSV += aquireBoonWeight(con, creditor, debtor, weights.boons);
+				createEdge(file, crypto.randomBytes(4).toString("hex"), con._id);
 			} else {
 				boonsCSV += aquireBoonWeight(creatCon(file, connections, creditor._id, debtor._id), creditor, debtor, weights.boons);
 			}
@@ -115,6 +120,14 @@ function distributeBoons(file, weights = undefinedt, newConnection) {
 		amount--;
 	}
 	return boonsCSV;
+}
+
+function createNewMap(file, characters) {
+	file.maps.push(_.cloneDeep(file.maps[0])); // figure something out if main map is not the first
+	file.maps.at(-1).name = "Boons Overview";
+	file.maps.at(-1)._id = `map-${crypto.randomBytes(4).toString("hex")}`;
+	file.maps.at(-1).connections = [];
+	file.maps.at(-1).elements = file.maps.at(-1).elements.filter((x) => characters.includes(x.element));
 }
 
 function creatCon(file, connections, creditorId, debtorId) {
@@ -137,16 +150,20 @@ function creatCon(file, connections, creditorId, debtorId) {
 
 	file.connections.push(con);
 
-	edge = {
-		_id: `edge-${newConId}`,
-		style: {},
-		curvature: 0,
-		connection: con._id,
-	};
-
-	file.maps[0].connections.push(edge); //figure something out if multiple maps exist
+	createEdge(file, newConId, con._id);
 
 	return con;
+}
+
+function createEdge(file, edgeId, conId) {
+	edge = {
+		_id: `edge-${edgeId}`,
+		style: {},
+		curvature: 0,
+		connection: conId,
+	};
+
+	file.maps.at(-1).connections.push(edge);
 }
 
 function aquireBoonWeight(con, creditor, debtor, weights) {
