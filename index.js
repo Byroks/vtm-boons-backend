@@ -58,12 +58,12 @@ app.get("/api/connection-weights", (req, res) => {
 
 app.post("/api/file-upload", (req, res) => {
 	let data = req.body;
-	csv = distributeBoons(data.file, data.weights, data.newConnection);
+	csv = distributeBoons(data.file, data.weights);
 	res.send({ json: data.file, csv: csv });
 });
 
 // https://kumu.io/RiggaTony/v5-relationship-map-template Template we are working off
-function distributeBoons(file, weights = undefinedt, newConnection) {
+function distributeBoons(file, weights = undefined) {
 	let boonsCSV;
 	let characters = file.elements.filter(
 		(x) =>
@@ -73,6 +73,9 @@ function distributeBoons(file, weights = undefinedt, newConnection) {
 	charIds = characters.map((x) => x._id);
 	let connections = file.connections.filter((x) => charIds.includes(x.from) && charIds.includes(x.to));
 
+	if (weights.boons === undefined) {
+		weights.boons = defaultBoonWeights;
+	}
 	weights.boons.minor += weights.boons.trivial;
 	weights.boons.moderate += weights.boons.minor;
 	weights.boons.major += weights.boons.moderate;
@@ -88,20 +91,17 @@ function distributeBoons(file, weights = undefinedt, newConnection) {
 
 	let creditor;
 	let debtor;
-	while (amount > 0) {
+	while (amount >= 1) {
 		creditor = characters[getRandomInt(characters.length)];
 		debtor = characters[getRandomInt(characters.length)];
 
 		if (creditor === debtor) continue;
 
 		con = connections.find((x) => creditor._id.includes(x.from) && debtor._id.includes(x.to));
-
 		if (con) {
 			if (!(getRandomInt(100) < 50 + weights.connections[con.attributes["element type"]])) continue;
 
 			boonsCSV += aquireBoonWeight(con, creditor, debtor, weights.boons);
-		} else if (!newConnection) {
-			continue;
 		} else {
 			if (!(getRandomInt(100) < 10)) continue;
 			con = connections.find((x) => debtor._id.includes(x.from) && creditor._id.includes(x.to));
