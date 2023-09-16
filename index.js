@@ -1,5 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const _ = require("lodash");
 const cors = require("cors");
 var busboy = require("connect-busboy");
 var crypto = require("crypto");
@@ -73,6 +74,8 @@ function distributeBoons(file, weights = undefined) {
 	charIds = characters.map((x) => x._id);
 	let connections = file.connections.filter((x) => charIds.includes(x.from) && charIds.includes(x.to));
 
+	createNewMap(file, charIds);
+
 	if (weights.boons === undefined) {
 		weights.boons = defaultBoonWeights;
 	}
@@ -99,14 +102,16 @@ function distributeBoons(file, weights = undefined) {
 
 		con = connections.find((x) => creditor._id.includes(x.from) && debtor._id.includes(x.to));
 		if (con) {
-			if (!(getRandomInt(100) < 50 + weights.connections[con.attributes["element type"]])) continue;
+			if (!(getRandomInt(100) < 50 + weights.connections[con.attributes["connection type"]])) continue;
 
 			boonsCSV += aquireBoonWeight(con, creditor, debtor, weights.boons);
+			createEdge(file, crypto.randomBytes(4).toString("hex"), con._id);
 		} else {
 			if (!(getRandomInt(100) < 10)) continue;
 			con = connections.find((x) => debtor._id.includes(x.from) && creditor._id.includes(x.to));
 			if (con) {
 				boonsCSV += aquireBoonWeight(con, creditor, debtor, weights.boons);
+				createEdge(file, crypto.randomBytes(4).toString("hex"), con._id);
 			} else {
 				boonsCSV += aquireBoonWeight(creatCon(file, connections, creditor._id, debtor._id), creditor, debtor, weights.boons);
 			}
@@ -115,6 +120,14 @@ function distributeBoons(file, weights = undefined) {
 		amount--;
 	}
 	return boonsCSV;
+}
+
+function createNewMap(file, characters) {
+	file.maps.push(_.cloneDeep(file.maps[0])); // figure something out if main map is not the first
+	file.maps.at(-1).name = "Boons Overview";
+	file.maps.at(-1)._id = `map-${crypto.randomBytes(4).toString("hex")}`;
+	file.maps.at(-1).connections = [];
+	file.maps.at(-1).elements = file.maps.at(-1).elements.filter((x) => characters.includes(x.element));
 }
 
 function creatCon(file, connections, creditorId, debtorId) {
@@ -137,16 +150,20 @@ function creatCon(file, connections, creditorId, debtorId) {
 
 	file.connections.push(con);
 
-	edge = {
-		_id: `edge-${newConId}`,
-		style: {},
-		curvature: 0,
-		connection: con._id,
-	};
-
-	file.maps[0].connections.push(edge); //figure something out if multiple maps exist
+	createEdge(file, newConId, con._id);
 
 	return con;
+}
+
+function createEdge(file, edgeId, conId) {
+	edge = {
+		_id: `edge-${edgeId}`,
+		style: {},
+		curvature: 0,
+		connection: conId,
+	};
+
+	file.maps.at(-1).connections.push(edge);
 }
 
 function aquireBoonWeight(con, creditor, debtor, weights) {
